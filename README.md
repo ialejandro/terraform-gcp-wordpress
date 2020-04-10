@@ -1,6 +1,6 @@
 # Terraform: Wordpress over Google Cloud Platform (GCP)
 
-Deploy [Wordpress]() over GCP with Terraform and Ansible.
+Deploy [Wordpress](https://wordpress.org/) over GCP with Terraform and Ansible.
 
 ## Requirements
 
