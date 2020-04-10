@@ -1,0 +1,20 @@
+# {{ ansible_managed }}
+<VirtualHost *:80>
+    ServerName {{ servername }}
+    ServerAlias *.{{ servername }}
+    ServerAdmin {{ serveradmin }}
+    DocumentRoot {{ documentroot }}
+
+    <Directory "{{ documentroot }}">
+        Options +Includes +FollowSymLinks -Indexes
+        AllowOverride All
+        Allow from all
+    </Directory>
+
+    # PHP-FPM config
+    Include "conf-available/php-fpm-{{ servername | regex_replace('(?=\.).*') }}.conf"
+
+    # Logging
+    ErrorLog {{ log_dir }}/{{ servername }}_error.log
+    CustomLog {{ log_dir }}/{{ servername }}_access.log combined
+</VirtualHost>

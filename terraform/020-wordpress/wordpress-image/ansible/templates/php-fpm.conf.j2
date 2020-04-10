@@ -1,0 +1,41 @@
+; {{ ansible_managed }}
+[{{ servername | regex_replace('(?=\.).*') }}]
+user = {{ ws_user }}
+group = {{ ws_group }}
+listen = /var/run/php/php-fpm.{{ servername | regex_replace('(?=\.).*') }}.sock
+listen.owner = {{ ws_user }}
+listen.group = {{ ws_group }}
+listen.allowed_clients = 127.0.0.1
+pm = dynamic
+pm.max_children = 10
+pm.start_servers = 4
+pm.min_spare_servers = 2
+pm.max_spare_servers = 4
+
+; PHP values
+php_admin_value[upload_max_filesize] = 10M
+php_admin_value[post_max_size] = 10M
+
+; Sessions
+;php_admin_value[session.save_handler] = memcached
+;php_admin_value[session.save_path] = "127.0.0.1:11211"
+
+; Log error
+php_admin_value[error_log] = /var/log/php/php-errors.log
+php_admin_value[error_reporting] = E_COMPILE_ERROR|E_RECOVERABLE_ERROR|E_ERROR|E_CORE_ERROR
+php_admin_flag[log_errors] = on
+
+; Other flags
+php_admin_value[date.timezone] = Europe/Madrid
+
+; Pass environment variables like LD_LIBRARY_PATH. All $VARIABLEs are taken from
+; the current environment.
+; Default Value: clean env
+env[HOSTNAME] = $HOSTNAME
+env[PATH] = /usr/local/bin:/usr/bin:/bin
+env[TMP] = /tmp
+env[TMPDIR] = /tmp
+env[TEMP] = /tmp
+
+; Para ver el estado de FPM en tiempo real: http://FQDN/status_fpm.php?full
+pm.status_path = /status_fpm.php

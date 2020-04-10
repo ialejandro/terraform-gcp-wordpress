@@ -1,0 +1,19 @@
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# ansible files
+*.retry
+
+# mac files
+.DS_Store
+.DS_Store?
+._*
+.Trashes
+
+# vim files
+*.bak
+*.swp

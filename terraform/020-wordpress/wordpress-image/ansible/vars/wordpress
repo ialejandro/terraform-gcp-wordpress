@@ -1,0 +1,24 @@
+# gcp credentials
+gcp_zone: "{{ tf_env_zone }}"
+gcp_project: "{{ tf_env_project }}" 
+gcp_cred_kind: "serviceaccount"
+gcp_cred_file: "<change-me>" # path where you put your json credential 
+
+# gcp image
+image_name: "wordpress-base"
+
+# mountpoint
+mountpoint: "{{ tf_env_filestore_dns }}:/wordpress" # filestore dns record
+
+# wordpress
+wp_version: "5.3" # https://es.wordpress.org/wordpress-{{ wp_version }}-es_ES.tar.gz
+
+# apache2 config
+ws_user: "www-data"
+ws_group: "www-data"
+log_dir: "/var/log/apache2/sites"
+
+# site
+servername: "<change-me>"
+serveradmin: "<change-me>"
+documentroot: "/var/www/wordpress"

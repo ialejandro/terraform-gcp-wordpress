@@ -1,0 +1,147 @@
+- name: modify instance
+  hosts: localhost
+  tasks:
+    - name: wait icmp
+      raw: ping -c 1 -W 1 {{ item.key }}
+      retries: 20
+      delay: 3
+      register: result
+      until: result.rc == 0
+      with_dict: "{{ hostvars }}"
+  
+    - name: wait port 22 open
+      wait_for:
+        host: "{{ item.key }}"
+        port: 22
+      with_dict: "{{ hostvars }}"
+
+- name: prepare wordpress
+  hosts: all
+  become: true
+  vars_files:
+    - vars/wordpress
+  tasks:
+    - name: Install packages
+      apt:
+        pkg:
+        - curl
+        - netcat
+        - wget
+        - nfs-common
+        - apache2
+        - default-mysql-client
+        - php-fpm
+        - php-mysql
+        state: present
+
+    - name: create log directory
+      file:
+        path: "{{ log_dir }}"
+        state: directory
+
+    - name: download wordpress
+      get_url: 
+        url: https://es.wordpress.org/wordpress-{{ wp_version }}-es_ES.tar.gz
+        dest: /tmp/wordpress.tar.gz
+
+    - name: create wordpress workdir
+      file:
+        path: "{{ documentroot }}"
+        state: directory
+        owner: "{{ ws_user }}"
+        group: "{{ ws_group }}"
+
+    - name: mount filestore
+      mount:
+        path: "{{ documentroot }}"
+        src: "{{ mountpoint }}"
+        opts: _netdev
+        state: mounted
+        fstype: nfs4
+
+    - name: unarchive wordpress
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: "{{ documentroot }}"
+        remote_src: yes
+        owner: "{{ ws_user }}"
+        group: "{{ ws_group }}"
+        extra_opts: [--strip-components=1]
+
+    - name: delete temp files
+      file:
+        path: /tmp/wordpress.tar.gz
+        state: absent
+
+    - name: deploy apache2 config
+      template:
+        src: vhost.conf.j2
+        dest: "/etc/apache2/sites-enabled/{{ servername | regex_replace('\\.', '_') }}.conf"
+
+    - name: deploy apache2 config php-fom
+      template:
+        src: apache-php-fpm.conf.j2
+        dest: "/etc/apache2/conf-available/php-fpm-{{ servername | regex_replace('(?=\\.).*') }}.conf"
+
+    - name: deploy php-fpm pool config
+      template:
+        src: php-fpm.conf.j2
+        dest: "/etc/php/7.3/fpm/pool.d/{{ servername | regex_replace('(?=\\.).*') }}.conf"
+
+    - name: enable proxy_fcgi
+      apache2_module:
+        name: proxy_fcgi
+        state: present
+
+    - name: restart service
+      service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - apache2
+        - php7.3-fpm
+
+- name: create image
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars/wordpress
+  tasks:
+    - name: destroy instance
+      gcp_compute_instance:
+        name: "{{ tf_env_instance }}"
+        zone: "{{ tf_env_zone }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: absent
+
+    - name: obtain data disk
+      gcp_compute_disk:
+        name: "{{ tf_env_instance }}"
+        zone: "{{ tf_env_zone }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: present
+      register: disk
+
+    - name: create a image
+      gcp_compute_image:
+        name: "{{ image_name }}"
+        source_disk: "{{ disk }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: present
+        labels:
+          creation_date: "{{ ansible_date_time.epoch }}"
+
+    - name: destroy disk
+      gcp_compute_disk:
+        name: "{{ tf_env_instance }}"
+        zone: "{{ tf_env_zone }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: absent
