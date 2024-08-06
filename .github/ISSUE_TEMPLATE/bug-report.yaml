@@ -1,0 +1,88 @@
+name: Bug report
+description: Create a bug report
+title: "[terraform] Bug title"
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please be cautious with the sensitive information/logs while filing the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug a clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: input
+    id: ansible-version
+    attributes:
+      label: What's your ansible version?
+      description: Output of `#~ ansible version`
+    validations:
+      required: true
+
+  - type: input
+    id: terraform-name
+    attributes:
+      label: terraform name
+      description: Enter the name of the terraform where you encountered this bug.
+    validations:
+      required: true
+
+  - type: input
+    id: terraform-version
+    attributes:
+      label: terraform version
+      description: Enter the version of the terraform that you encountered this bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: explain-bug
+    attributes:
+      label: Explain bug
+      description: Explain what happened.
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected-result
+    attributes:
+      label: What you expected to happen?
+      description: Enter what you expected to happen.
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduce-bug
+    attributes:
+      label: How to reproduce it?
+      description: Explain step-by-step if is possible.
+    validations:
+      required: false
+
+  - type: textarea
+    id: terraform-values
+    attributes:
+      label: Enter the changed values
+      description: Please enter only values which differ from the defaults. Enter `NONE` if nothing's changed.
+      placeholder: 'key: value'
+    validations:
+      required: false
+
+  - type: textarea
+    id: ansible-command
+    attributes:
+      label: Enter the command that you execute when terraform failing/misfunctioning
+      description: Enter the command as-is as how you executed.
+      placeholder: terraform [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: more-info
+    attributes:
+      label: More info
+    validations:
+      required: false
