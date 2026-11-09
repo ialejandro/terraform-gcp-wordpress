@@ -1,23 +1,28 @@
+# Copy this file to terraform.tfvars in each module directory and edit the values.
+# Never commit your real terraform.tfvars: it holds the database password.
+
 # Global GCP Configuration
-project_id = "my-wordpress-project"
-region     = "europe-west1"
-zone       = "europe-west1-d"
+project_id = "my-wordpress-project" # Your GCP project ID (not the display name)
+region     = "europe-west1"         # Region for the subnets, Cloud SQL and Filestore
+zone       = "europe-west1-d"       # Zone for the Cloud SQL primary and the instances
 
 # =============================================================================
 # Base Infrastructure (terraform/base-infrastructure)
 # =============================================================================
 
 # VPC
-network_name        = "wordpress-vpc"
+network_name        = "wordpress-vpc"                   # Name of the VPC network
 network_description = "VPC for WordPress infrastructure"
-routing_mode        = "REGIONAL"
+routing_mode        = "REGIONAL"                        # REGIONAL or GLOBAL
 
+# One public and one private subnet. WordPress uses the second one (public-subnet),
+# so keep the order. subnet_ip is the CIDR range and must not overlap with others.
 subnets = [
   {
     subnet_name           = "private-subnet"
     subnet_ip             = "10.10.1.0/24"
     subnet_region         = "europe-west1"
-    subnet_private_access = true
+    subnet_private_access = true # Reach Google APIs without a public IP
   },
   {
     subnet_name           = "public-subnet"
@@ -27,6 +32,8 @@ subnets = [
   }
 ]
 
+# Ingress firewall rules. Restrict source_ranges in production, especially SSH:
+# 0.0.0.0/0 opens the port to the whole internet.
 ingress_rules = [
   {
     name          = "allow-web"
@@ -42,7 +49,7 @@ ingress_rules = [
   {
     name          = "allow-ssh"
     description   = "Allow incoming SSH"
-    source_ranges = ["0.0.0.0/0"]
+    source_ranges = ["0.0.0.0/0"] # Replace with your own IP, e.g. "203.0.113.4/32"
     allow = [
       {
         protocol = "tcp"
@@ -53,34 +60,36 @@ ingress_rules = [
 ]
 
 # DNS
-dns_name = "example.com."
+dns_name = "example.com." # Your domain. Must end with a period
 
 # CloudSQL
-cloud_sql_version   = "MYSQL_8_0"
-cloud_sql_tier      = "db-f1-micro"
-cloud_sql_size      = 10
-deletion_protection = false # Set to true for production environments
-database_name       = "wordpress"
+cloud_sql_version   = "MYSQL_8_0"    # Must start with MYSQL_
+cloud_sql_tier      = "db-f1-micro"  # Machine type. Use a bigger tier for production
+cloud_sql_size      = 10             # Disk size in GB
+deletion_protection = false          # Set to true for production environments
+database_name       = "wordpress"    # Database created for WordPress
 database_user       = "wordpress_user"
-database_password   = "change-this-password"
+database_password   = "change-this-password" # Replace with your own strong secret
 
-# Filestore
+# Filestore (NFS share for the WordPress document root)
 filestore_name = "wordpress-fs"
-filestore_tier = "BASIC_HDD"
-share_name     = "wordpress"
-capacity_gb    = 1024
+filestore_tier = "BASIC_HDD" # BASIC_HDD, BASIC_SSD, HIGH_SCALE_SSD, ENTERPRISE, ZONAL or REGIONAL
+share_name     = "wordpress" # Name of the NFS share
+capacity_gb    = 1024        # Minimum depends on the tier (1024 for BASIC_HDD)
 
 # =============================================================================
 # WordPress (terraform/wordpress)
 # =============================================================================
 
-machine_type           = "e2-micro"
-disk_size_gb           = 10
-disk_type              = "pd-standard"
-target_size            = 1
-wordpress_server_name  = "wordpress.example.com"
-wordpress_server_admin = "admin@example.com"
+machine_type           = "e2-micro"            # Instance machine type
+disk_size_gb           = 10                    # Boot disk size in GB
+disk_type              = "pd-standard"         # pd-standard, pd-ssd or pd-balanced
+target_size            = 1                     # Instances in the managed group (1 or more)
+wordpress_server_name  = "wordpress.example.com" # Public host name of the site
+wordpress_server_admin = "admin@example.com"     # Admin contact email
 
+# Declared by the module but not read by Terraform yet. The installed WordPress version
+# and language come from terraform/wordpress/wordpress-image/ansible/vars/wordpress.
 wordpress_config = {
   version  = "6.7"
   language = "es_ES"
