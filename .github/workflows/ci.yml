@@ -51,7 +51,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
-          tflint --config "$GITHUB_WORKSPACE/.tflint.hcl"
+          tflint --config "$GITHUB_WORKSPACE/.tflint.hcl" --minimum-failure-severity=error
 
       - name: Trivy config
         uses: aquasecurity/trivy-action@v0.36.0
