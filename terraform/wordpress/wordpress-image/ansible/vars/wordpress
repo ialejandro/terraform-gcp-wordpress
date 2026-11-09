@@ -1,0 +1,36 @@
+---
+# GCP Configuration
+gcp_zone: "{{ tf_env_zone | default('europe-west1-d') }}"
+gcp_project: "{{ tf_env_project | default('my-wordpress-project') }}"
+gcp_cred_kind: "serviceaccount"
+gcp_cred_file: "{{ tf_env_gcp_cred_file | default('/path/to/credentials.json') }}"
+
+# GCP Image Configuration
+image_name: "wordpress-base"
+
+# Filestore Configuration
+mountpoint: "{{ tf_env_filestore_dns | default('filestore.internal') }}:/wordpress"
+
+# WordPress Core Configuration
+wp_version: "{{ tf_env_wp_version | default('6.7') }}"
+wp_language: "{{ tf_env_wp_language | default('es_ES') }}"
+wp_base_url: "{{ tf_env_wp_base_url | default('https://es.wordpress.org') }}"
+wp_download_url: "{{ wp_base_url }}/wordpress-{{ wp_version }}-{{ wp_language }}.tar.gz"
+wp_force_download: "{{ tf_env_wp_force_download | default(false) }}"
+
+# PHP Configuration
+php_version: "8.2"
+php_memory_limit: "{{ tf_env_php_memory_limit | default('128M') }}"
+php_max_execution_time: "{{ tf_env_php_max_execution_time | default('30') }}"
+php_upload_max_filesize: "{{ tf_env_php_upload_max_filesize | default('64M') }}"
+php_post_max_size: "{{ tf_env_php_post_max_size | default('64M') }}"
+
+# Apache2 Configuration
+ws_user: "www-data"
+ws_group: "www-data"
+log_dir: "/var/log/apache2/sites"
+
+# Site Configuration
+servername: "{{ tf_env_servername | default('wordpress.example.com') }}"
+serveradmin: "{{ tf_env_serveradmin | default('admin@example.com') }}"
+documentroot: "/var/www/wordpress"

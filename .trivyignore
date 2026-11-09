@@ -1,0 +1,8 @@
+# Cloud SQL has no public IP (ipv4_enabled = false, private VPC peering). The scanner flags module defaults.
+GCP-0017
+
+# Enforcing SSL on Cloud SQL needs client-side SSL config in WordPress first. Traffic stays on the private VPC.
+GCP-0015
+
+# The temporary image builder instance needs a public IP so Ansible can reach it over SSH. It is destroyed after the image is made.
+GCP-0031

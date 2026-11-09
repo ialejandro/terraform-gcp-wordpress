@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform checks (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - terraform/base-infrastructure
+          - terraform/wordpress
+          - terraform/wordpress/wordpress-image
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read Terraform version
+        id: tf
+        working-directory: .
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ steps.tf.outputs.version }}
+
+      - uses: terraform-linters/setup-tflint@v6
+
+      - name: Format
+        run: terraform fmt -check -recursive
+
+      - name: Init
+        run: terraform init -backend=false
+
+      - name: Validate
+        run: terraform validate
+
+      - name: TFLint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
+          tflint --config "$GITHUB_WORKSPACE/.tflint.hcl" --minimum-failure-severity=error
+
+      - name: Trivy config
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: ${{ matrix.dir }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  test:
+    name: Terraform test (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - terraform/base-infrastructure
+          - terraform/wordpress
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read Terraform version
+        id: tf
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ steps.tf.outputs.version }}
+
+      - name: Init
+        working-directory: ${{ matrix.dir }}
+        run: terraform init -backend=false
+
+      - name: Test
+        working-directory: ${{ matrix.dir }}
+        run: terraform test
+
+  ansible:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipenv
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install locked dependencies
+        run: pipenv install --deploy --dev
+
+      - name: ansible-lint
+        run: pipenv run ansible-lint ../terraform/wordpress/wordpress-image/ansible/main.yml
+
+      - name: Syntax check
+        env:
+          ANSIBLE_CONFIG: ../terraform/wordpress/wordpress-image/ansible/ansible.cfg
+        run: pipenv run ansible-playbook --syntax-check -i localhost, ../terraform/wordpress/wordpress-image/ansible/main.yml
