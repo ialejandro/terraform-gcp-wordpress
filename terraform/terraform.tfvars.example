@@ -1,0 +1,88 @@
+# Global GCP Configuration
+project_id = "my-wordpress-project"
+region     = "europe-west1"
+zone       = "europe-west1-d"
+
+# =============================================================================
+# Base Infrastructure (terraform/base-infrastructure)
+# =============================================================================
+
+# VPC
+network_name        = "wordpress-vpc"
+network_description = "VPC for WordPress infrastructure"
+routing_mode        = "REGIONAL"
+
+subnets = [
+  {
+    subnet_name           = "private-subnet"
+    subnet_ip             = "10.10.1.0/24"
+    subnet_region         = "europe-west1"
+    subnet_private_access = true
+  },
+  {
+    subnet_name           = "public-subnet"
+    subnet_ip             = "10.10.2.0/24"
+    subnet_region         = "europe-west1"
+    subnet_private_access = false
+  }
+]
+
+ingress_rules = [
+  {
+    name          = "allow-web"
+    description   = "Allow incoming web traffic"
+    source_ranges = ["0.0.0.0/0"]
+    allow = [
+      {
+        protocol = "tcp"
+        ports    = ["80", "443"]
+      }
+    ]
+  },
+  {
+    name          = "allow-ssh"
+    description   = "Allow incoming SSH"
+    source_ranges = ["0.0.0.0/0"]
+    allow = [
+      {
+        protocol = "tcp"
+        ports    = ["22"]
+      }
+    ]
+  }
+]
+
+# DNS
+dns_name = "example.com."
+
+# CloudSQL
+cloud_sql_version   = "MYSQL_8_0"
+cloud_sql_tier      = "db-f1-micro"
+cloud_sql_size      = 10
+deletion_protection = false # Set to true for production environments
+database_name       = "wordpress"
+database_user       = "wordpress_user"
+database_password   = "change-this-password"
+
+# Filestore
+filestore_name = "wordpress-fs"
+filestore_tier = "BASIC_HDD"
+share_name     = "wordpress"
+capacity_gb    = 1024
+
+# =============================================================================
+# WordPress (terraform/wordpress)
+# =============================================================================
+
+machine_type           = "e2-micro"
+disk_size_gb           = 10
+disk_type              = "pd-standard"
+target_size            = 1
+wordpress_server_name  = "wordpress.example.com"
+wordpress_server_admin = "admin@example.com"
+
+wordpress_config = {
+  version  = "6.7"
+  language = "es_ES"
+  base_url = "https://es.wordpress.org"
+}

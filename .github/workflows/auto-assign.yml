@@ -1,0 +1,21 @@
+name: Auto assign
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+    - name: 'Auto-assign issue'
+      uses: pozil/auto-assign-issue@v4
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        assignees: ialejandro
+        numOfAssignee: 1

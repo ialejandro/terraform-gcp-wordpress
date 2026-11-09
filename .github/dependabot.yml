@@ -3,25 +3,42 @@ updates:
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
-    interval: monthly
+    interval: weekly
   open-pull-requests-limit: 10
   labels:
   - enhancement
   - dependency-management
+  groups:
+    actions-minor-patch:
+      update-types:
+      - minor
+      - patch
 - package-ecosystem: terraform
   directories:
-  - "/terraform/**/*"
+  - "/terraform/base-infrastructure"
+  - "/terraform/wordpress"
+  - "/terraform/wordpress/wordpress-image"
   schedule:
-    interval: monthly
+    interval: weekly
   open-pull-requests-limit: 10
   labels:
   - enhancement
   - dependency-management
+  groups:
+    terraform-minor-patch:
+      update-types:
+      - minor
+      - patch
 - package-ecosystem: pip
-  directory: "/virtualenvs"
+  directory: "/pipenv"
   schedule:
-    interval: monthly
+    interval: weekly
   open-pull-requests-limit: 10
   labels:
   - enhancement
   - dependency-management
+  groups:
+    pip-minor-patch:
+      update-types:
+      - minor
+      - patch

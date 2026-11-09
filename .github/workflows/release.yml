@@ -1,0 +1,22 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: softprops/action-gh-release@v3
+        with:
+          generate_release_notes: true

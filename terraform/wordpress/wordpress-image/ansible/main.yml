@@ -1,0 +1,215 @@
+---
+- name: Wait for instance connectivity
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Wait for SSH connection
+      ansible.builtin.wait_for_connection:
+        delay: 10
+        timeout: 300
+
+- name: Prepare WordPress image
+  hosts: all
+  become: true
+  gather_facts: true
+  vars_files:
+    - vars/wordpress
+  handlers:
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+
+    - name: Restart PHP-FPM
+      ansible.builtin.service:
+        name: "php{{ php_version }}-fpm"
+        state: restarted
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        pkg:
+          - curl
+          - wget
+          - netcat-openbsd
+          - nfs-common
+          - apache2
+          - default-mysql-client
+          - "php{{ php_version }}-fpm"
+          - "php{{ php_version }}-mysql"
+          - "php{{ php_version }}-curl"
+          - "php{{ php_version }}-gd"
+          - "php{{ php_version }}-intl"
+          - "php{{ php_version }}-mbstring"
+          - "php{{ php_version }}-xml"
+          - "php{{ php_version }}-zip"
+        state: present
+
+    - name: Create log directory
+      ansible.builtin.file:
+        path: "{{ log_dir }}"
+        state: directory
+        owner: root
+        group: adm
+        mode: "0750"
+
+    - name: Create PHP log directory
+      ansible.builtin.file:
+        path: /var/log/php
+        state: directory
+        owner: "{{ ws_user }}"
+        group: "{{ ws_group }}"
+        mode: "0750"
+
+    - name: Create WordPress document root
+      ansible.builtin.file:
+        path: "{{ documentroot }}"
+        state: directory
+        owner: "{{ ws_user }}"
+        group: "{{ ws_group }}"
+        mode: "0755"
+
+    - name: Mount Filestore NFS share
+      ansible.posix.mount:
+        path: "{{ documentroot }}"
+        src: "{{ mountpoint }}"
+        opts: _netdev
+        state: mounted
+        fstype: nfs4
+
+    - name: Check if WordPress is already downloaded
+      ansible.builtin.stat:
+        path: /tmp/wordpress.tar.gz
+      register: wp_archive
+      when: not wp_force_download | bool
+
+    - name: Download WordPress
+      ansible.builtin.get_url:
+        url: "{{ wp_download_url }}"
+        dest: /tmp/wordpress.tar.gz
+        force: "{{ wp_force_download | bool }}"
+        mode: "0644"
+      when: (wp_force_download | bool) or not (wp_archive.stat.exists | default(false))
+      register: wp_download
+
+    - name: Extract WordPress
+      ansible.builtin.unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: "{{ documentroot }}"
+        remote_src: true
+        owner: "{{ ws_user }}"
+        group: "{{ ws_group }}"
+        extra_opts: [--strip-components=1]
+      when: wp_download is changed
+
+    - name: Remove temporary archive
+      ansible.builtin.file:
+        path: /tmp/wordpress.tar.gz
+        state: absent
+
+    - name: Deploy Apache virtual host configuration
+      ansible.builtin.template:
+        src: vhost.conf.j2
+        dest: "/etc/apache2/sites-enabled/{{ servername | regex_replace('\\.', '_') }}.conf"
+        mode: "0644"
+      notify:
+        - Restart Apache
+
+    - name: Deploy Apache PHP-FPM configuration
+      ansible.builtin.template:
+        src: apache-php-fpm.conf.j2
+        dest: "/etc/apache2/conf-available/php-fpm-{{ servername | regex_replace('(?=\\.).*') }}.conf"
+        mode: "0644"
+      notify:
+        - Restart Apache
+
+    - name: Deploy PHP-FPM pool configuration
+      ansible.builtin.template:
+        src: php-fpm.conf.j2
+        dest: "/etc/php/{{ php_version }}/fpm/pool.d/{{ servername | regex_replace('(?=\\.).*') }}.conf"
+        mode: "0644"
+      notify:
+        - Restart PHP-FPM
+
+    - name: Disable default Apache site
+      ansible.builtin.file:
+        path: /etc/apache2/sites-enabled/000-default.conf
+        state: absent
+      notify:
+        - Restart Apache
+
+    - name: Enable Apache proxy_fcgi module
+      community.general.apache2_module:
+        name: proxy_fcgi
+        state: present
+      notify:
+        - Restart Apache
+
+    - name: Enable Apache rewrite module
+      community.general.apache2_module:
+        name: rewrite
+        state: present
+      notify:
+        - Restart Apache
+
+- name: Create machine image
+  hosts: localhost
+  gather_facts: true
+  vars_files:
+    - vars/wordpress
+  tasks:
+    - name: Stop the build instance
+      google.cloud.gcp_compute_instance:
+        name: "{{ tf_env_instance }}"
+        zone: "{{ tf_env_zone }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        status: TERMINATED
+      register: instance
+
+    - name: Get the boot disk
+      google.cloud.gcp_compute_disk:
+        name: "{{ tf_env_instance }}"
+        zone: "{{ tf_env_zone }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: present
+      register: disk
+
+    - name: Create machine image from disk
+      google.cloud.gcp_compute_image:
+        name: "{{ image_name }}"
+        source_disk: "{{ disk }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: present
+        labels:
+          creation_date: "{{ ansible_date_time.epoch }}"
+          wordpress_version: "{{ wp_version }}"
+          wordpress_language: "{{ wp_language }}"
+
+    - name: Delete the build instance
+      google.cloud.gcp_compute_instance:
+        name: "{{ tf_env_instance }}"
+        zone: "{{ tf_env_zone }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: absent
+
+    - name: Delete the boot disk
+      google.cloud.gcp_compute_disk:
+        name: "{{ tf_env_instance }}"
+        zone: "{{ tf_env_zone }}"
+        project: "{{ tf_env_project }}"
+        auth_kind: "{{ gcp_cred_kind }}"
+        service_account_file: "{{ gcp_cred_file }}"
+        state: absent
