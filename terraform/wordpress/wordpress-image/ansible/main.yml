@@ -105,7 +105,7 @@
         owner: "{{ ws_user }}"
         group: "{{ ws_group }}"
         extra_opts: [--strip-components=1]
-      when: wp_download is changed
+      when: wp_download is changed  # noqa: no-handler
 
     - name: Remove temporary archive
       ansible.builtin.file:
