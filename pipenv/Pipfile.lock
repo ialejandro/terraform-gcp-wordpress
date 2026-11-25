@@ -392,12 +392,12 @@
         },
         "google-auth": {
             "hashes": [
-                "sha256:046c61a72d3a847d6df6417a7f0d5cf054e3b82bbcb54fb1e69d47880964049c",
-                "sha256:e9bcdb0679b6a4369ac327c5c59f06d92f7b4cd2624e7100294c14632f55a36b"
+                "sha256:3c977ca57114a302c2589f3a24be7ca1b6862d30da7619f4230a78809f58a0e9",
+                "sha256:f69f387dba9abe536fec87483a749485f2ef0c81bfa79f609d9873e57054a1a5"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.10'",
-            "version": "==2.62.2"
+            "version": "==2.63.1"
         },
         "idna": {
             "hashes": [
